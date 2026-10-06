@@ -1,0 +1,1188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<meta name="description" content="Convert Ericsson kget output to an Excel workbook, offline in the browser.">
+<title>kget to Excel</title>
+<style>
+:root{
+  --paper:#F3F5F8; --sheet:#FFFFFF; --ink:#18212C; --muted:#566273; --rule:#CDD5DF;
+  --signal:#1F5FAD; --signal-deep:#184E90; --amber:#A64B05;
+  --display:"Bahnschrift","DIN Alternate","DIN 2014","D-DIN","Roboto Condensed","Arial Narrow",Arial,sans-serif;
+  --text:"Segoe UI","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --mono:"Cascadia Mono","SF Mono",Consolas,"Liberation Mono",Menlo,monospace;
+}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 var(--text)}
+.wrap{max-width:44rem;margin:0 auto;padding:clamp(2.5rem,8vw,5rem) 1.25rem 3rem}
+h1{font-family:var(--display);font-weight:600;font-stretch:condensed;font-size:clamp(2.6rem,7vw,4.2rem);line-height:.95;letter-spacing:-.01em;margin:0 0 1rem}
+.lede{font-size:1.125rem;color:var(--muted);margin:0 0 2.25rem;max-width:36rem}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.dropzone{position:relative;display:flex;flex-direction:column;justify-content:flex-end;min-height:17rem;padding:1.5rem 1.75rem 1.6rem;background:var(--sheet);border:1.5px solid var(--rule);border-radius:6px;cursor:pointer;overflow:hidden;transition:border-color .15s,box-shadow .15s}
+.dropzone:hover{border-color:#9FB0C4}
+.dropzone.over{border-color:var(--signal);box-shadow:0 0 0 4px rgba(31,95,173,.14)}
+#file:focus-visible + .dropzone{outline:3px solid var(--signal);outline-offset:3px}
+.ghost{position:absolute;top:1.25rem;left:1.75rem;right:1.75rem;margin:0;font:12.5px/1.7 var(--mono);color:#AEB9C6;white-space:pre;overflow:hidden;pointer-events:none;-webkit-mask-image:linear-gradient(#000 30%,transparent 80%);mask-image:linear-gradient(#000 30%,transparent 80%)}
+.drop-title{position:relative;font-family:var(--display);font-weight:600;font-size:1.8rem;line-height:1.1}
+.drop-sub{position:relative;color:var(--muted);margin-top:.4rem}
+.drop-sub u{color:var(--signal);text-underline-offset:3px}
+.privacy{font-size:.92rem;color:var(--muted);margin:.75rem 0 0}
+.status{min-height:1.5rem;margin:1.6rem 0 .5rem}
+.status.error{color:var(--amber);font-weight:600}
+.status.ok{color:var(--signal);font-weight:600}
+progress{display:block;width:100%;height:4px;-webkit-appearance:none;appearance:none;border:0;border-radius:2px;background:var(--rule);overflow:hidden}
+progress::-webkit-progress-bar{background:var(--rule)}
+progress::-webkit-progress-value{background:var(--signal)}
+progress::-moz-progress-bar{background:var(--signal)}
+#peek{margin:.75rem 0 0;padding:1rem 1.1rem;background:var(--sheet);border:1px solid var(--rule);border-radius:4px;font:12.5px/1.6 var(--mono);color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere}
+.result{margin-top:.75rem}
+.count{font-family:var(--display);font-weight:600;font-size:clamp(2.3rem,6vw,3.3rem);line-height:1;margin:0 0 1rem;font-variant-numeric:tabular-nums}
+.verdict{position:relative;margin:.3rem 0;padding-left:1.6rem}
+.verdict.ok::before{content:"\2713";position:absolute;left:0;color:var(--signal);font-weight:700}
+.verdict.attn{color:var(--amber)}
+.verdict.attn::before{content:"!";position:absolute;left:.35rem;font-weight:800}
+.facts{color:var(--muted);margin:.9rem 0 1.75rem;overflow-wrap:anywhere}
+details{border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:.75rem 0;margin:0 0 1.1rem}
+summary{cursor:pointer;font-weight:600}
+.pick-tools{display:flex;flex-wrap:wrap;gap:.5rem;margin:.9rem 0 .7rem}
+.pick-tools input{flex:1 1 12rem;font:inherit;padding:.45rem .65rem;border:1px solid var(--rule);border-radius:4px;background:var(--sheet);color:var(--ink)}
+.pick-tools button{font:inherit;padding:.45rem .85rem;border:1px solid var(--rule);border-radius:4px;background:var(--sheet);color:var(--ink);cursor:pointer}
+.pick-tools button:hover{border-color:#9FB0C4}
+.pick-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr));gap:.1rem 1.5rem;max-height:18rem;overflow:auto}
+.pick-list label{display:flex;align-items:center;gap:.55rem;padding:.2rem 0;cursor:pointer}
+.pick-list .cls{flex:1;overflow-wrap:anywhere}
+.pick-list .n{color:var(--muted);font-size:.9rem;font-variant-numeric:tabular-nums}
+.opt{display:flex;align-items:flex-start;gap:.6rem;margin:0 0 1.6rem;cursor:pointer}
+.opt input{margin-top:.3rem}
+.go{font:600 1.05rem/1 var(--text);color:#fff;background:var(--signal);border:0;border-radius:5px;padding:1rem 1.6rem;cursor:pointer}
+.go:hover{background:var(--signal-deep)}
+.go:disabled{background:#8FA3BB;cursor:not-allowed}
+:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+.about{margin-top:4rem;padding-top:1.6rem;border-top:1px solid var(--rule)}
+.about h2{font-family:var(--display);font-weight:600;font-size:1.4rem;line-height:1.2;margin:0 0 1rem}
+.about dl{display:grid;grid-template-columns:9.5rem 1fr;gap:.6rem 1.25rem;margin:0}
+.about dt{font-weight:600}
+.about dd{margin:0;color:var(--muted)}
+footer{margin-top:3rem;color:var(--muted);font-size:.9rem}
+@media (max-width:34rem){
+  .about dl{grid-template-columns:1fr;gap:.15rem}
+  .about dd{margin-bottom:.7rem}
+  .dropzone{min-height:16rem;padding:1.25rem 1.25rem 1.35rem}
+  .ghost{left:1.25rem;right:1.25rem;font-size:11px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>kget to Excel</h1>
+  <p class="lede">Turn an Ericsson kget dump into a workbook: one sheet per MO class, one row per MO, and every value traceable to its line in the file.</p>
+
+  <input type="file" id="file" class="sr-only">
+  <label for="file" class="dropzone" id="dropzone">
+<pre class="ghost" aria-hidden="true">Proxy Id                             412
+MO                                   ManagedElement=1,ENodeBFunction=1,EUtranCellFDD=CELL_A1
+administrativeState                  1 (UNLOCKED)
+cellRange                            15
+earfcndl                             6300
+Struct eUtranCellCoverage has 4 members:
+ >>> 1.posCellBearing = -1</pre>
+    <span class="drop-title">Drop a kget file here</span>
+    <span class="drop-sub">or <u>choose a file</u>. Plain text, .log or .gz.</span>
+  </label>
+  <p class="privacy">The file is read in this browser and never uploaded.</p>
+
+  <div id="status" class="status" role="status" aria-live="polite"></div>
+  <progress id="progress" max="1" value="0" hidden></progress>
+  <pre id="peek" hidden></pre>
+
+  <section id="result" class="result" hidden aria-labelledby="r-count">
+    <p id="r-count" class="count"></p>
+    <p id="r-total" class="verdict"></p>
+    <p id="r-lines" class="verdict"></p>
+    <p id="r-counts" class="verdict" hidden></p>
+    <p id="r-facts" class="facts"></p>
+
+    <details id="pick">
+      <summary id="pick-summary">Choose MO classes</summary>
+      <div class="pick-tools">
+        <input type="search" id="pick-filter" placeholder="Filter classes" aria-label="Filter MO classes">
+        <button type="button" id="pick-all">Select shown</button>
+        <button type="button" id="pick-none">Clear shown</button>
+      </div>
+      <ul id="pick-list" class="pick-list"></ul>
+    </details>
+
+    <label class="opt"><input type="checkbox" id="opt-params" checked><span>Add the Parameters sheet: every value on its own row, with the line it came from</span></label>
+    <button type="button" id="go" class="go">Download Excel</button>
+  </section>
+
+  <section class="about" aria-labelledby="about-h">
+    <h2 id="about-h">What the workbook holds</h2>
+    <dl>
+      <dt>Summary</dt><dd>The MO count checked against the file's own Total line, and a link to every sheet.</dd>
+      <dt>A sheet per class</dt><dd>One row per MO and one column per parameter. Struct members show as struct.member; array elements are joined with a vertical bar.</dd>
+      <dt>Parameters</dt><dd>Every value on its own row with its line number in the file. Optional.</dd>
+      <dt>Checks</dt><dd>Any line the converter could not place, so nothing is dropped without a trace.</dd>
+    </dl>
+  </section>
+
+  <footer>Runs offline in your browser. kget2xlsx 1.0. Prepared by Frutos</footer>
+</main>
+<script>
+/* kget2xlsx core: Ericsson kget text parser and XLSX writer. No dependencies. Prepared by Frutos. */
+(function (root) {
+  'use strict';
+
+  var VERSION = '1.0';
+  var MAX_ROWS = 1048576;     // Excel rows per sheet, header included
+  var MAX_COLS = 16384;       // Excel columns per sheet
+  var MAX_CELL = 32767;       // Excel characters per cell
+  var JOIN = ' | ';           // array elements in class sheets
+  var MAX_CHECKS = 100000;    // rows listed on the Checks sheet
+  var RESERVED = ['Summary', 'Checks', 'Parameters', 'History'];   // History is reserved by Excel
+  var SHORT = ' [shortened]';
+
+  var RE = {
+    blank: /^\s*$/,
+    rule: /^\s*=+\s*$/,
+    proxy: /^Proxy\s+Id\s+(\d+)\s*$/,
+    mo: /^MO\s+([^\s=]+=.*?)\s*$/,
+    total: /^Total:\s+(\d+)\s+MOs?\.?\s*$/,
+    element: /^\s*>>>\s?(.*?)\s*$/,
+    elementStruct: /^Struct\[(\d+)\]\s+has\s+(\d+)\s+members?:?$/,
+    member: /^(\d+)\.([^\s=]+)\s*=\s?(.*)$/,
+    named: /^([^\s=]+)\s*=\s?(.*)$/,
+    struct: /^Struct\s+(\S+)\s+has\s+(\d+)\s+members?:?\s*$/,
+    array: /^([A-Za-z_][\w.\-]*)\s*\[(\d+)\]\s*(?:=\s*)?(.*?)\s*$/,
+    attribute: /^([A-Za-z_][\w.\-]*)(?:\s+(.*?))?\s*$/,
+    rdnKey: /^[A-Za-z_][\w\-]*$/,
+    intValue: /^(?:0|-?[1-9]\d{0,10})$/,
+    xmlBad: /[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g,
+    xmlBadOne: /[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/,
+    xmlEsc: /[&<>"]/g
+  };
+
+  // ------------------------------------------------------------------ helpers
+  function stemOf(name) {
+    var base = String(name || 'kget').split(/[\\/]/).pop();
+    base = base.replace(/\.gz$/i, '').replace(/\.[^.]{1,5}$/, '');
+    return base || 'kget';
+  }
+  function lower(s) { return s.toLowerCase(); }
+  function byName(a, b) {
+    var x = a.toLowerCase(), y = b.toLowerCase();
+    return x < y ? -1 : x > y ? 1 : (a < b ? -1 : a > b ? 1 : 0);
+  }
+  function fmtInt(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  function plural(n, one, many) { return fmtInt(n) + ' ' + (n === 1 ? one : many); }
+
+  function splitLdn(ldn) {
+    var out = [], segs = ldn.split(',');
+    for (var i = 0; i < segs.length; i++) {
+      var seg = segs[i], eq = seg.indexOf('=');
+      var key = eq > 0 ? seg.slice(0, eq).trim() : '';
+      if (key && RE.rdnKey.test(key)) out.push([key, seg.slice(eq + 1).trim()]);
+      else if (out.length) out[out.length - 1][1] += ',' + seg;
+      else out.push(['', seg.trim()]);
+    }
+    return out;
+  }
+  function nodeOf(parts) {
+    var i;
+    for (i = 0; i < parts.length; i++) if (parts[i][0] === 'MeContext' && parts[i][1]) return parts[i][1];
+    for (i = 0; i < parts.length; i++) if (parts[i][0] === 'ManagedElement' && parts[i][1] && parts[i][1] !== '1') return parts[i][1];
+    return '';
+  }
+  function pathOf(parts) {
+    var me = -1, i;
+    for (i = 0; i < parts.length; i++) if (parts[i][0] === 'ManagedElement') { me = i; break; }
+    var p = me >= 0 ? parts.slice(me + 1)
+      : parts.filter(function (x) { return x[0] !== 'SubNetwork' && x[0] !== 'MeContext'; });
+    if (!p.length && me >= 0) p = [parts[me]];
+    return p;
+  }
+
+  // ------------------------------------------------------------------ parser
+  function Parser(fileName) {
+    this.fileName = String(fileName || 'kget');
+    this.stem = stemOf(this.fileName);
+    this.lineNo = 0;
+    this.carry = '';
+    this.mos = [];
+    this.cur = null;
+    this.ctx = null;
+    this.proxy = null;
+    this.section = 'before';
+    this.totals = [];
+    this.segmentStart = 0;
+    this.checks = [];
+    this.checksDropped = 0;
+    this.counts = { outside: 0, unrecognised: 0, mismatches: 0, values: 0 };
+    this.pool = new Map();
+  }
+
+  Parser.prototype.str = function (s) {
+    var p = this.pool.get(s);
+    if (p === undefined) { this.pool.set(s, s); p = s; }
+    return p;
+  };
+
+  Parser.prototype.push = function (text) {
+    if (!text) return;
+    var data = this.carry + text, start = 0, i;
+    while ((i = data.indexOf('\n', start)) !== -1) {
+      this.line(data.slice(start, i));
+      start = i + 1;
+    }
+    this.carry = data.slice(start);
+  };
+
+  Parser.prototype.end = function () {
+    if (this.carry.length) { this.line(this.carry); this.carry = ''; }
+    this.closeCtx();
+    return this.result();
+  };
+
+  Parser.prototype.line = function (raw) {
+    var n = ++this.lineNo;
+    var s = raw.charCodeAt(raw.length - 1) === 13 ? raw.slice(0, -1) : raw;
+    if (RE.blank.test(s) || RE.rule.test(s)) return;
+    var m;
+    if ((m = RE.proxy.exec(s))) { this.closeCtx(); this.proxy = m[1]; return; }
+    if ((m = RE.mo.exec(s))) { this.closeCtx(); this.startMo(m[1], n); return; }
+    if ((m = RE.total.exec(s))) { this.closeCtx(); this.total(+m[1], n); return; }
+    if (this.section !== 'mo') { this.outside(n, s); return; }
+    if ((m = RE.element.exec(s))) { this.element(m[1], n, s); return; }
+    if ((m = RE.struct.exec(s))) { this.closeCtx(); this.openStruct(m[1], +m[2], n); return; }
+    if ((m = RE.array.exec(s))) { this.closeCtx(); this.openArray(m[1], +m[2], m[3], n); return; }
+    if ((m = RE.attribute.exec(s))) { this.closeCtx(); this.add(m[1], 0, m[2] || '', n); return; }
+    this.flag(n, 'Inside MO', 'Line not recognised', s);
+    this.counts.unrecognised++;
+  };
+
+  Parser.prototype.startMo = function (ldn, n) {
+    var parts = splitLdn(ldn);
+    var last = parts.length ? parts[parts.length - 1][0] : '';
+    var mo = {
+      cls: this.str(last || '(unnamed)'),
+      ldn: ldn,
+      proxy: this.proxy,
+      node: this.str(nodeOf(parts) || this.stem),
+      path: pathOf(parts).map(function (p) { return [this.str(p[0] || '(unnamed)'), p[1]]; }, this),
+      line: n,
+      e: []
+    };
+    this.proxy = null;
+    this.mos.push(mo);
+    this.cur = mo;
+    this.section = 'mo';
+  };
+
+  Parser.prototype.total = function (value, n) {
+    var counted = this.mos.length - this.segmentStart;
+    this.totals.push({ value: value, line: n, counted: counted });
+    this.segmentStart = this.mos.length;
+    this.cur = null;
+    this.section = 'after';
+  };
+
+  Parser.prototype.add = function (col, idx, val, n) {
+    this.cur.e.push(this.str(col), idx, val.trim(), n);
+    this.counts.values++;
+  };
+
+  Parser.prototype.openStruct = function (name, declared, n) {
+    this.ctx = { type: 'struct', name: name, declared: declared, seen: 0, line: n, el: null };
+    if (declared === 0) this.add(name, 0, '', n);
+  };
+
+  Parser.prototype.openArray = function (name, declared, rest, n) {
+    if (rest !== '') { this.add(name, 0, rest, n); return; }       // values printed on the same line
+    if (declared === 0) { this.add(name, 0, '', n); return; }      // empty array
+    this.ctx = { type: 'array', name: name, declared: declared, seen: 0, line: n, el: null };
+  };
+
+  Parser.prototype.element = function (rest, n, raw) {
+    var c = this.ctx, m;
+    if (c && c.type === 'array' && (m = RE.elementStruct.exec(rest))) {
+      this.closeElement();
+      c.seen++;
+      c.el = { idx: c.seen, declared: +m[2], seen: 0, line: n };
+      return;
+    }
+    if ((m = RE.member.exec(rest))) {
+      if (c && c.type === 'struct') { c.seen++; this.add(c.name + '.' + m[2], 0, m[3], n); return; }
+      if (c && c.type === 'array' && c.el) { c.el.seen++; this.add(c.name + '.' + m[2], c.el.idx, m[3], n); return; }
+    }
+    if (c && c.type === 'array' && !c.el) {
+      c.seen++;
+      m = RE.named.exec(rest);
+      this.add(c.name, c.seen, (m && m[1] === c.name) ? m[2] : rest, n);
+      return;
+    }
+    this.flag(n, 'Inside MO', c ? 'Line not recognised' : 'Element line outside a struct or array', raw);
+    this.counts.unrecognised++;
+  };
+
+  Parser.prototype.closeElement = function () {
+    var c = this.ctx;
+    if (!c || c.type !== 'array' || !c.el) return;
+    var el = c.el;
+    if (el.seen !== el.declared) {
+      this.mismatch(el.line, 'Struct member count', c.name + ' element ' + el.idx + ': declared ' + el.declared + ', found ' + el.seen);
+    }
+    c.el = null;
+  };
+
+  Parser.prototype.closeCtx = function () {
+    var c = this.ctx;
+    if (!c) return;
+    this.closeElement();
+    if (c.seen !== c.declared) {
+      this.mismatch(c.line, c.type === 'struct' ? 'Struct member count' : 'Array element count',
+        c.name + ': declared ' + c.declared + ', found ' + c.seen);
+    }
+    this.ctx = null;
+  };
+
+  Parser.prototype.mismatch = function (line, check, detail) {
+    this.counts.mismatches++;
+    this.flag(line, 'Inside MO', check, detail);
+  };
+
+  Parser.prototype.outside = function (n, s) {
+    this.counts.outside++;
+    this.flag(n, this.section === 'before' ? 'Before first MO' : 'After a Total line', 'Line outside MO blocks', s);
+  };
+
+  Parser.prototype.flag = function (line, where, check, detail) {
+    if (this.checks.length >= MAX_CHECKS) { this.checksDropped++; return; }
+    this.checks.push({ line: line, where: where, mo: this.cur && where === 'Inside MO' ? this.cur.ldn : '', check: check, detail: detail });
+  };
+
+  Parser.prototype.result = function () {
+    var classes = new Map(), nodes = [], seen = new Set(), i;
+    for (i = 0; i < this.mos.length; i++) {
+      var mo = this.mos[i], list = classes.get(mo.cls);
+      if (!list) classes.set(mo.cls, list = []);
+      list.push(i);
+      if (!seen.has(mo.node)) { seen.add(mo.node); nodes.push(mo.node); }
+    }
+    var trailing = this.mos.length - this.segmentStart;
+    var verdict = !this.totals.length ? 'none'
+      : (trailing === 0 && this.totals.every(function (t) { return t.value === t.counted; })) ? 'match' : 'mismatch';
+    return {
+      version: VERSION,
+      fileName: this.fileName,
+      stem: this.stem,
+      lines: this.lineNo,
+      mos: this.mos,
+      classes: classes,
+      classNames: Array.from(classes.keys()).sort(byName),
+      nodes: nodes,
+      totals: this.totals,
+      trailing: trailing,
+      verdict: verdict,
+      checks: this.checks,
+      checksDropped: this.checksDropped,
+      counts: this.counts
+    };
+  };
+
+  function parseText(text, fileName) {
+    var p = new Parser(fileName);
+    p.push(text);
+    return p.end();
+  }
+
+  function describeVerdict(res) {
+    var t = res.totals, n = res.mos.length;
+    if (res.verdict === 'none') {
+      return { ok: false, text: 'The file has no "Total: ... MOs" line, so the MO count could not be cross-checked.' };
+    }
+    if (res.verdict === 'match') {
+      if (t.length === 1) return { ok: true, text: 'Matches the file\'s own count: "Total: ' + t[0].value + ' MOs" on line ' + fmtInt(t[0].line) + '.' };
+      return { ok: true, text: 'Matches all ' + t.length + ' "Total" lines in the file (' + t.length + ' dumps, ' + fmtInt(n) + ' MOs).' };
+    }
+    var parts = t.filter(function (x) { return x.value !== x.counted; }).map(function (x) {
+      return 'line ' + fmtInt(x.line) + ' says ' + fmtInt(x.value) + ' MOs, ' + fmtInt(x.counted) + ' were read';
+    });
+    if (res.trailing) parts.push(plural(res.trailing, 'MO follows', 'MOs follow') + ' the last "Total" line');
+    return { ok: false, text: 'Count mismatch: ' + parts.join('; ') + '.' };
+  }
+
+  // ------------------------------------------------------------------ XLSX writer
+  var CRC_TABLE = (function () {
+    var t = new Int32Array(256);
+    for (var n = 0; n < 256; n++) {
+      var c = n;
+      for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+      t[n] = c;
+    }
+    return t;
+  })();
+  function crc32(crc, buf) {
+    crc = crc ^ -1;
+    for (var i = 0; i < buf.length; i++) crc = CRC_TABLE[(crc ^ buf[i]) & 0xFF] ^ (crc >>> 8);
+    return crc ^ -1;
+  }
+  function canDeflate() {
+    try { new CompressionStream('deflate-raw'); return true; } catch (e) { return false; }
+  }
+
+  async function packEntry(name, chunks, deflate) {
+    var crc = 0, size = 0, parts = [], comp = 0, chunk;
+    if (deflate) {
+      var cs = new CompressionStream('deflate-raw');
+      var w = cs.writable.getWriter(), r = cs.readable.getReader();
+      var pump = (async function () {
+        for (;;) {
+          var x = await r.read();
+          if (x.done) return;
+          parts.push(x.value);
+          comp += x.value.length;
+        }
+      })();
+      for (chunk of chunks) {
+        crc = crc32(crc, chunk);
+        size += chunk.length;
+        await w.write(chunk);
+      }
+      await w.close();
+      await pump;
+    } else {
+      for (chunk of chunks) {
+        crc = crc32(crc, chunk);
+        size += chunk.length;
+        parts.push(chunk);
+      }
+      comp = size;
+    }
+    if (size > 0xFFFFFFFE || comp > 0xFFFFFFFE) {
+      throw new Error('One sheet is larger than 4 GB. Leave out the Parameters sheet or choose fewer MO classes.');
+    }
+    return { name: name, crc: crc >>> 0, size: size, compSize: comp, parts: parts, method: deflate ? 8 : 0 };
+  }
+
+  function zipBlob(entries) {
+    var enc = new TextEncoder(), out = [], central = [], offset = 0, d = new Date();
+    var time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+    var date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+    entries.forEach(function (e) {
+      var nb = enc.encode(e.name);
+      var lh = new DataView(new ArrayBuffer(30));
+      lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0, true);
+      lh.setUint16(8, e.method, true); lh.setUint16(10, time, true); lh.setUint16(12, date, true);
+      lh.setUint32(14, e.crc, true); lh.setUint32(18, e.compSize, true); lh.setUint32(22, e.size, true);
+      lh.setUint16(26, nb.length, true); lh.setUint16(28, 0, true);
+      out.push(new Uint8Array(lh.buffer), nb);
+      for (var i = 0; i < e.parts.length; i++) out.push(e.parts[i]);
+      var ch = new DataView(new ArrayBuffer(46));
+      ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true);
+      ch.setUint16(8, 0, true); ch.setUint16(10, e.method, true); ch.setUint16(12, time, true);
+      ch.setUint16(14, date, true); ch.setUint32(16, e.crc, true); ch.setUint32(20, e.compSize, true);
+      ch.setUint32(24, e.size, true); ch.setUint16(28, nb.length, true); ch.setUint16(30, 0, true);
+      ch.setUint16(32, 0, true); ch.setUint16(34, 0, true); ch.setUint16(36, 0, true);
+      ch.setUint32(38, 0, true); ch.setUint32(42, offset, true);
+      central.push(new Uint8Array(ch.buffer), nb);
+      offset += 30 + nb.length + e.compSize;
+      if (offset > 0xFFFFFFFE) throw new Error('The workbook would be larger than 4 GB. Leave out the Parameters sheet or choose fewer MO classes.');
+    });
+    var cdSize = 0;
+    central.forEach(function (c) { cdSize += c.length; });
+    var eo = new DataView(new ArrayBuffer(22));
+    eo.setUint32(0, 0x06054b50, true); eo.setUint16(4, 0, true); eo.setUint16(6, 0, true);
+    eo.setUint16(8, entries.length, true); eo.setUint16(10, entries.length, true);
+    eo.setUint32(12, cdSize, true); eo.setUint32(16, offset, true); eo.setUint16(20, 0, true);
+    return new Blob(out.concat(central, [new Uint8Array(eo.buffer)]),
+      { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  }
+
+  var COLS = [];
+  function colName(i) {
+    if (COLS[i] !== undefined) return COLS[i];
+    var s = '', n = i + 1;
+    while (n > 0) { var m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = (n - m - 1) / 26; }
+    COLS[i] = s;
+    return s;
+  }
+  function xmlText(s) {
+    return String(s).replace(RE.xmlBad, '').replace(RE.xmlEsc, function (c) {
+      return c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : '&quot;';
+    });
+  }
+  function quoteSheet(name) { return "'" + name.replace(/'/g, "''") + "'"; }
+
+  function cellXml(ref, v, s) {
+    if (v === null || v === undefined || v === '') return '';
+    var st = s ? ' s="' + s + '"' : '';
+    if (typeof v === 'number') return isFinite(v) ? '<c r="' + ref + '"' + st + '><v>' + v + '</v></c>' : '';
+    if (RE.intValue.test(v)) return '<c r="' + ref + '"' + st + '><v>' + v + '</v></c>';
+    var t = xmlText(v);
+    if (!t) return '';
+    var sp = (t.charCodeAt(0) <= 32 || t.charCodeAt(t.length - 1) <= 32) ? ' xml:space="preserve"' : '';
+    return '<c r="' + ref + '"' + st + ' t="inlineStr"><is><t' + sp + '>' + t + '</t></is></c>';
+  }
+
+  // spec: { rows: iterable of arrays, nRows, nCols, widths, freezeX, freezeY, filter, selected, textNumbers }
+  function* sheetXml(spec) {
+    var enc = new TextEncoder(), buf = [], size = 0, links = [];
+    var nRows = Math.max(spec.nRows, 1), nCols = Math.max(spec.nCols, 1);
+    var last = colName(nCols - 1) + nRows;
+    var head = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+      'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+      '<dimension ref="A1:' + last + '"/><sheetViews><sheetView workbookViewId="0"' + (spec.selected ? ' tabSelected="1"' : '') + '>';
+    var fx = spec.freezeX || 0, fy = spec.freezeY || 0;
+    if (fx || fy) {
+      var tl = colName(fx) + (fy + 1);
+      var pane = fx && fy ? 'bottomRight' : fy ? 'bottomLeft' : 'topRight';
+      head += '<pane' + (fx ? ' xSplit="' + fx + '"' : '') + (fy ? ' ySplit="' + fy + '"' : '') +
+        ' topLeftCell="' + tl + '" activePane="' + pane + '" state="frozen"/>' +
+        '<selection pane="' + pane + '" activeCell="' + tl + '" sqref="' + tl + '"/>';
+    }
+    head += '</sheetView></sheetViews><sheetFormatPr defaultRowHeight="13"/>';
+    if (spec.widths && spec.widths.length) {
+      head += '<cols>';
+      for (var w = 0; w < spec.widths.length; w++) {
+        head += '<col min="' + (w + 1) + '" max="' + (w + 1) + '" width="' + spec.widths[w].toFixed(1) + '" customWidth="1"/>';
+      }
+      head += '</cols>';
+    }
+    buf.push(head + '<sheetData>');
+    var r = 0;
+    for (var row of spec.rows) {
+      r++;
+      var x = '<row r="' + r + '">';
+      for (var c = 0; c < row.length; c++) {
+        var v = row[c];
+        if (v === undefined || v === null || v === '') continue;
+        var ref = colName(c) + r;
+        if (typeof v === 'object') {
+          x += cellXml(ref, v.v, v.s);
+          if (v.link) links.push('<hyperlink ref="' + ref + '" location="' + xmlText(quoteSheet(v.link)) + '!A1" display="' + xmlText(String(v.v)) + '"/>');
+        } else {
+          x += cellXml(ref, v, 0);
+        }
+      }
+      x += '</row>';
+      buf.push(x);
+      size += x.length;
+      if (size >= 1 << 20) { yield enc.encode(buf.join('')); buf = []; size = 0; }
+    }
+    var tail = '</sheetData>';
+    if (spec.filter && r > 0) tail += '<autoFilter ref="A1:' + last + '"/>';
+    if (links.length) tail += '<hyperlinks>' + links.join('') + '</hyperlinks>';
+    tail += '<pageMargins left="0.5" right="0.5" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>';
+    if (spec.textNumbers) tail += '<ignoredErrors><ignoredError sqref="A1:' + last + '" numberStoredAsText="1"/></ignoredErrors>';
+    tail += '</worksheet>';
+    buf.push(tail);
+    yield enc.encode(buf.join(''));
+  }
+
+  function textLen(v) { return v === undefined || v === null ? 0 : typeof v === 'object' ? String(v.v).length : String(v).length; }
+  function widthsFor(header, sampleRows, min, max) {
+    var w = header.map(function (h) { return Math.min(max, Math.max(min, String(h).length + 3)); });
+    sampleRows.forEach(function (row) {
+      for (var c = 0; c < row.length && c < w.length; c++) {
+        var L = textLen(row[c]);
+        if (L) w[c] = Math.min(max, Math.max(w[c], L + 2));
+      }
+    });
+    return w;
+  }
+  function uniqueLabels(labels) {
+    var seen = new Map();
+    return labels.map(function (l) {
+      var k = l.toLowerCase(), n = seen.get(k) || 0;
+      seen.set(k, n + 1);
+      return n ? l + ' (' + (n + 1) + ')' : l;
+    });
+  }
+  function sheetNamer(used) {
+    return function (base) {
+      var clean = String(base).replace(/[\[\]:*?\/\\]/g, '_').replace(/^'+|'+$/g, '').trim() || 'Sheet';
+      var name = clean.slice(0, 31), n = 1;
+      while (used.has(name.toLowerCase())) {
+        n++;
+        var suffix = ' (' + n + ')';
+        name = clean.slice(0, 31 - suffix.length) + suffix;
+      }
+      used.add(name.toLowerCase());
+      return name;
+    };
+  }
+
+  function classLayout(res, ids) {
+    var pathKeys = [], pathPos = new Map(), cols = [], colPos = new Map();
+    for (var i = 0; i < ids.length; i++) {
+      var mo = res.mos[ids[i]], occ = new Map(), j;
+      for (j = 0; j < mo.path.length; j++) {
+        var k = mo.path[j][0], n = (occ.get(k) || 0) + 1;
+        occ.set(k, n);
+        var label = n > 1 ? k + ' #' + n : k;
+        if (!pathPos.has(label)) { pathPos.set(label, pathKeys.length); pathKeys.push(label); }
+      }
+      for (j = 0; j < mo.e.length; j += 4) {
+        if (!colPos.has(mo.e[j])) { colPos.set(mo.e[j], cols.length); cols.push(mo.e[j]); }
+      }
+    }
+    return { pathKeys: pathKeys, pathPos: pathPos, cols: cols, colPos: colPos };
+  }
+
+  function clip(v) {
+    if (typeof v !== 'string' || v.length <= MAX_CELL) return v;
+    return v.slice(0, MAX_CELL - SHORT.length) + SHORT;
+  }
+
+  // ctx: { line, mo, col, sheet, hint, exact }
+  function fit(v, ctx, notes) {
+    if (typeof v !== 'string') return v;
+    if (RE.xmlBadOne.test(v)) {
+      v = v.replace(RE.xmlBad, '');
+      if (notes) notes.push({ line: ctx.line, where: 'Workbook', mo: ctx.mo, check: 'Characters removed',
+        detail: ctx.col + ' on sheet ' + ctx.sheet + ' held control characters that Excel cannot store; they were removed.' });
+    }
+    if (v.length <= MAX_CELL) return v;
+    if (notes) {
+      var where = ctx.hint || (ctx.exact ? 'The full value is on line ' + fmtInt(ctx.line) + ' of the kget file.'
+        : 'The full value is in the kget file under this MO.');
+      notes.push({ line: ctx.line, where: 'Workbook', mo: ctx.mo, check: 'Cell shortened',
+        detail: ctx.col + ' on sheet ' + ctx.sheet + ' has ' + fmtInt(v.length) + ' characters; Excel holds ' + fmtInt(MAX_CELL) +
+          ' per cell, so the cell ends with' + SHORT + '. ' + where });
+    }
+    return clip(v);
+  }
+
+  function classRow(res, mo, L, keepCols, sheet, notes, hint) {
+    var base = 1 + L.pathKeys.length, nCols = L.cols.length, row = new Array(base + keepCols + 2), j;
+    row[0] = mo.node;
+    var occ = new Map();
+    for (j = 0; j < mo.path.length; j++) {
+      var k = mo.path[j][0], n = (occ.get(k) || 0) + 1;
+      occ.set(k, n);
+      row[1 + L.pathPos.get(n > 1 ? k + ' #' + n : k)] = mo.path[j][1];
+    }
+    var slots = new Array(nCols), e = mo.e;
+    for (j = 0; j < e.length; j += 4) {
+      var ci = L.colPos.get(e[j]), idx = e[j + 1], v = e[j + 2], cur = slots[ci];
+      if (idx > 0) {
+        if (cur === undefined) cur = slots[ci] = { a: [] };
+        else if (!cur.a) cur = slots[ci] = { a: [cur] };
+        cur.a[idx - 1] = cur.a[idx - 1] === undefined ? v : cur.a[idx - 1] + JOIN + v;
+      } else if (cur === undefined) {
+        slots[ci] = v;
+      } else {
+        if (notes) notes.push({ line: e[j + 3], where: 'Workbook', mo: mo.ldn, check: 'Repeated parameter',
+          detail: e[j] + ' appears more than once in this MO; the values are joined with " | " on sheet ' + sheet + '.' });
+        slots[ci] = (cur.a ? cur.a.map(function (x) { return x === undefined ? '' : x; }).join(JOIN) : cur) + JOIN + v;
+      }
+    }
+    for (j = 0; j < nCols && j < keepCols; j++) {
+      var s = slots[j], joined = false;
+      if (s === undefined) continue;
+      if (s.a) {
+        var out = new Array(s.a.length);
+        for (var q = 0; q < s.a.length; q++) out[q] = s.a[q] === undefined ? '' : s.a[q];
+        s = out.join(JOIN);
+        joined = true;
+      }
+      row[base + j] = fit(s, { line: mo.line, mo: mo.ldn, col: L.cols[j], sheet: sheet, hint: joined ? hint : '' }, notes);
+    }
+    row[base + keepCols] = mo.ldn;
+    row[base + keepCols + 1] = mo.proxy === null ? '' : mo.proxy;
+    return row;
+  }
+
+  function* classRows(res, ids, L, keepCols, header, sheet, notes, hint) {
+    yield header.map(function (h) { return { v: h, s: 1 }; });
+    for (var i = 0; i < ids.length; i++) yield classRow(res, res.mos[ids[i]], L, keepCols, sheet, notes, hint);
+  }
+
+  function paramCursor(res, wanted) {
+    var i = 0, j = 0;
+    return {
+      next: function () {
+        while (i < res.mos.length) {
+          var mo = res.mos[i];
+          if ((!wanted || wanted.has(mo.cls)) && j < mo.e.length) {
+            var row = [mo.node, mo.cls, mo.ldn, mo.e[j], mo.e[j + 1] || '', mo.e[j + 2], mo.e[j + 3]];
+            j += 4;
+            return row;
+          }
+          i++; j = 0;
+        }
+        return null;
+      }
+    };
+  }
+  function* paramRows(cursor, count, sheet, notes) {
+    yield ['Node', 'MO class', 'MO', 'Parameter', 'Index', 'Value', 'Line'].map(function (h) { return { v: h, s: 1 }; });
+    for (var k = 0; k < count; k++) {
+      var row = cursor.next();
+      if (!row) return;
+      row[5] = fit(row[5], { line: row[6], mo: row[2], col: row[3], sheet: sheet, hint: '', exact: true }, notes);
+      yield row;
+    }
+  }
+
+  function* listRows(rows) { for (var i = 0; i < rows.length; i++) yield rows[i]; }
+
+  function stylesXml() {
+    var f = function (extra) { return '<font>' + extra + '<sz val="10"/><name val="Arial"/><family val="2"/></font>'; };
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      '<fonts count="6">' + f('') + f('<b/>') + f('<u/><color rgb="FF1F5FAD"/>') +
+      '<font><b/><sz val="14"/><name val="Arial"/><family val="2"/></font>' +
+      f('<b/><color rgb="FF1F5FAD"/>') + f('<b/><color rgb="FFA64B05"/>') + '</fonts>' +
+      '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>' +
+      '<fill><patternFill patternType="solid"><fgColor rgb="FFE6EBF2"/><bgColor indexed="64"/></patternFill></fill></fills>' +
+      '<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>' +
+      '<border><left/><right/><top/><bottom style="thin"><color rgb="FF8A99AD"/></bottom><diagonal/></border></borders>' +
+      '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+      '<cellXfs count="8">' +
+      '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+      '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>' +
+      '<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+      '<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+      '<xf numFmtId="0" fontId="4" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+      '<xf numFmtId="0" fontId="5" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+      '<xf numFmtId="3" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
+      '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+      '</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
+      '<dxfs count="0"/><tableStyles count="0"/></styleSheet>';
+  }
+
+  function localStamp(d) {
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    var off = -d.getTimezoneOffset(), sign = off >= 0 ? '+' : '-', a = Math.abs(off);
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' +
+      p(d.getMinutes()) + ' (UTC' + sign + p(Math.floor(a / 60)) + ':' + p(a % 60) + ')';
+  }
+
+  async function buildWorkbook(res, opts) {
+    opts = opts || {};
+    var report = opts.onProgress || function () {};
+    var wanted = opts.classes ? new Set(opts.classes) : null;
+    var withParams = opts.parameters !== false;
+    var deflate = opts.compress !== false && typeof CompressionStream !== 'undefined' && canDeflate();
+    var rowsMax = opts.maxRows || MAX_ROWS;   // smaller values only in tests, to exercise sheet splitting
+    var hint = withParams ? 'Each array element is also on its own row on the Parameters sheet.' : '';
+    var classNames = res.classNames.filter(function (c) { return !wanted || wanted.has(c); });
+    if (!classNames.length) throw new Error('No MO classes selected.');
+
+    var used = new Set(RESERVED.map(lower));
+    var nameSheet = sheetNamer(used);
+    var notes = [];
+    var sheets = [];
+    var firstSheetOf = new Map();
+    var add = function (name, kind, extra) { var s = { name: name, kind: kind, extra: extra || {} }; sheets.push(s); return s; };
+
+    add('Summary', 'summary');
+    add('Checks', 'checks');
+    classNames.forEach(function (cls) {
+      var ids = res.classes.get(cls), per = rowsMax - 1;
+      var parts = Math.max(1, Math.ceil(ids.length / per));
+      for (var k = 0; k < parts; k++) {
+        var nm = nameSheet(parts > 1 ? cls + ' (' + (k + 1) + ')' : cls);
+        if (k === 0) {
+          firstSheetOf.set(cls, nm);
+          if (nm !== cls && parts === 1) {
+            notes.push({ line: '', where: 'Workbook', mo: '', check: 'Sheet renamed',
+              detail: 'MO class ' + cls + ' is on sheet ' + nm + '; Excel sheet names are limited to 31 characters and some names and characters are not allowed.' });
+          }
+        }
+        add(nm, 'class', { cls: cls, ids: ids.slice(k * per, (k + 1) * per) });
+      }
+    });
+    var paramCount = 0;
+    if (withParams) {
+      classNames.forEach(function (c) { res.classes.get(c).forEach(function (i) { paramCount += res.mos[i].e.length / 4; }); });
+      var pp = Math.max(1, Math.ceil(paramCount / (rowsMax - 1)));
+      for (var k = 0; k < pp; k++) {
+        var pn = pp > 1 ? 'Parameters (' + (k + 1) + ')' : 'Parameters';
+        used.add(pn.toLowerCase());
+        add(pn, 'params', { count: Math.min(rowsMax - 1, paramCount - k * (rowsMax - 1)) });
+      }
+    }
+
+    var total = sheets.length, done = 0, packed = new Map();
+    var cursor = withParams ? paramCursor(res, wanted) : null;
+    var sheetFile = function (s) { return 'xl/worksheets/sheet' + (sheets.indexOf(s) + 1) + '.xml'; };
+
+    for (var si = 0; si < sheets.length; si++) {
+      var s = sheets[si];
+      if (s.kind === 'class') {
+        var L = classLayout(res, s.extra.ids);
+        var room = MAX_COLS - 1 - L.pathKeys.length - 2;
+        var keep = Math.min(L.cols.length, room);
+        if (keep < L.cols.length) {
+          notes.push({ line: '', where: 'Workbook', mo: '', check: 'Columns left out',
+            detail: fmtInt(L.cols.length - keep) + ' parameter columns of ' + s.extra.cls + ' exceed Excel\'s 16,384-column limit' +
+              (withParams ? '; their values are on the Parameters sheet.' : '. Add the Parameters sheet to see them.') });
+        }
+        var header = uniqueLabels(['Node'].concat(L.pathKeys, L.cols.slice(0, keep), ['MO', 'Proxy Id']));
+        var sample = [];
+        for (var q = 0; q < s.extra.ids.length && q < 2000; q++) sample.push(classRow(res, res.mos[s.extra.ids[q]], L, keep, s.name, null, ''));
+        var spec = {
+          rows: classRows(res, s.extra.ids, L, keep, header, s.name, notes, hint),
+          nRows: s.extra.ids.length + 1, nCols: header.length,
+          widths: widthsFor(header, sample, 7, 60),
+          freezeX: 1 + L.pathKeys.length, freezeY: 1, filter: true, textNumbers: true
+        };
+        s.extra.cols = header.length;
+        packed.set(s, await packEntry(sheetFile(s), sheetXml(spec), deflate));
+        report({ done: ++done, total: total, label: s.name });
+      } else if (s.kind === 'params') {
+        var ph = ['Node', 'MO class', 'MO', 'Parameter', 'Index', 'Value', 'Line'];
+        packed.set(s, await packEntry(sheetFile(s), sheetXml({
+          rows: paramRows(cursor, s.extra.count, s.name, notes),
+          nRows: s.extra.count + 1, nCols: ph.length,
+          widths: [16, 24, 70, 34, 7, 40, 9], freezeY: 1, filter: true, textNumbers: true
+        }), deflate));
+        report({ done: ++done, total: total, label: s.name });
+      }
+    }
+
+    // Checks
+    var checkSheet = sheets[1];
+    var all = res.checks.concat(notes).slice().sort(function (a, b) {
+      var x = a.line === '' ? Infinity : a.line, y = b.line === '' ? Infinity : b.line;
+      return x - y;
+    });
+    var crow = [['Line', 'Where', 'MO', 'Check', 'Detail'].map(function (h) { return { v: h, s: 1 }; })];
+    if (!all.length) crow.push(['', '', '', 'None', 'Every line inside the MO blocks was placed and every declared count matched.']);
+    all.forEach(function (c) { crow.push([c.line, c.where, clip(c.mo), c.check, clip(String(c.detail))]); });
+    if (res.checksDropped) crow.push(['', '', '', 'Listing stopped', fmtInt(res.checksDropped) + ' more lines are not listed (limit ' + fmtInt(MAX_CHECKS) + ' rows).']);
+    packed.set(checkSheet, await packEntry(sheetFile(checkSheet), sheetXml({
+      rows: listRows(crow), nRows: crow.length, nCols: 5, widths: [9, 18, 60, 30, 90], freezeY: 1, filter: true, textNumbers: true
+    }), deflate));
+    report({ done: ++done, total: total, label: 'Checks' });
+
+    // Summary
+    var v = describeVerdict(res);
+    var unrec = res.counts.unrecognised, mism = res.counts.mismatches;
+    var B = function (t) { return { v: t, s: 7 }; };
+    var N = function (n) { return { v: n, s: 6 }; };
+    var totalsText = res.totals.length
+      ? res.totals.map(function (t) { return '"Total: ' + t.value + ' MOs" on line ' + fmtInt(t.line); }).join('; ')
+      : 'Not found';
+    var nodesText = res.nodes.slice(0, 20).join(', ') + (res.nodes.length > 20 ? ' and ' + (res.nodes.length - 20) + ' more' : '');
+    var sr = [
+      [{ v: 'kget conversion summary', s: 3 }],
+      ['kget2xlsx ' + VERSION, 'Prepared by Frutos'],
+      [],
+      [B('Source file'), res.fileName],
+      [B('Lines read'), N(res.lines)],
+      [B('Converted'), localStamp(new Date())],
+      [B(res.nodes.length === 1 ? 'Node' : 'Nodes'), clip(nodesText)],
+      [],
+      [B('MO blocks read'), N(res.mos.length)],
+      [B('Total line in file'), clip(totalsText)],
+      [B('MO count check'), { v: clip(v.text), s: v.ok ? 4 : 5 }],
+      [B('Values extracted'), N(res.counts.values)],
+      [B('Lines inside MO blocks not placed'), { v: unrec, s: unrec ? 5 : 4 }, unrec ? { v: 'Checks', s: 2, link: 'Checks' } : ''],
+      [B('Declared counts not matched'), { v: mism, s: mism ? 5 : 4 }, mism ? { v: 'Checks', s: 2, link: 'Checks' } : ''],
+      [B('Lines outside MO blocks'), N(res.counts.outside), res.counts.outside ? { v: 'Checks', s: 2, link: 'Checks' } : ''],
+      [B('Workbook notes'), N(notes.length), notes.length ? { v: 'Checks', s: 2, link: 'Checks' } : ''],
+      [],
+      [B('Class sheets'), 'One row per MO and one column per parameter. Struct members appear as struct.member; array elements are joined with " | " in element order.'],
+      [B('Parameters'), withParams ? 'One row per value, with the line it came from in the source file.' : 'Not included in this export.'],
+      [B('Checks'), 'Every line the converter could not place, every declared count that did not match, and lines outside the MO blocks.'],
+      [],
+      ['MO class', 'MOs', 'Columns', 'Sheet'].map(function (h) { return { v: h, s: 1 }; })
+    ];
+    var colsOf = new Map();
+    sheets.forEach(function (x) { if (x.kind === 'class' && !colsOf.has(x.extra.cls)) colsOf.set(x.extra.cls, x.extra.cols); });
+    res.classNames.forEach(function (cls) {
+      var sheetName = firstSheetOf.get(cls);
+      sr.push(sheetName
+        ? [{ v: cls, s: 2, link: sheetName }, N(res.classes.get(cls).length), N(colsOf.get(cls)), sheetName]
+        : [cls, N(res.classes.get(cls).length), '', 'Not exported']);
+    });
+    var summarySheet = sheets[0];
+    packed.set(summarySheet, await packEntry(sheetFile(summarySheet), sheetXml({
+      rows: listRows(sr), nRows: sr.length, nCols: 4, widths: [36, 64, 10, 34], selected: true
+    }), deflate));
+    report({ done: ++done, total: total, label: 'Summary' });
+
+    // Package parts
+    var enc = new TextEncoder();
+    var x1 = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+    var ct = x1 + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+      '<Default Extension="xml" ContentType="application/xml"/>' +
+      '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+      '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>';
+    var wbSheets = '', wbRels = '', defined = '';
+    sheets.forEach(function (s, i) {
+      ct += '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+      wbSheets += '<sheet name="' + xmlText(s.name) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>';
+      wbRels += '<Relationship Id="rId' + (i + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>';
+    });
+    sheets.forEach(function (s, i) {
+      var n = s.kind === 'class' ? s.extra.ids.length + 1 : s.kind === 'params' ? s.extra.count + 1 : s.kind === 'checks' ? crow.length : 0;
+      var c = s.kind === 'class' ? s.extra.cols : s.kind === 'params' ? 7 : s.kind === 'checks' ? 5 : 0;
+      if (n > 0 && c > 0) {
+        defined += '<definedName name="_xlnm._FilterDatabase" localSheetId="' + i + '" hidden="1">' +
+          xmlText(quoteSheet(s.name)) + '!$A$1:$' + colName(c - 1) + '$' + n + '</definedName>';
+      }
+    });
+    ct += '</Types>';
+    var rels = x1 + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
+    var wb = x1 + '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+      '<bookViews><workbookView xWindow="0" yWindow="0" windowWidth="28800" windowHeight="15000" activeTab="0"/></bookViews>' +
+      '<sheets>' + wbSheets + '</sheets>' + (defined ? '<definedNames>' + defined + '</definedNames>' : '') + '</workbook>';
+    var wbr = x1 + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + wbRels +
+      '<Relationship Id="rId' + (sheets.length + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>';
+
+    var entries = [
+      await packEntry('[Content_Types].xml', [enc.encode(ct)], deflate),
+      await packEntry('_rels/.rels', [enc.encode(rels)], deflate),
+      await packEntry('xl/workbook.xml', [enc.encode(wb)], deflate),
+      await packEntry('xl/_rels/workbook.xml.rels', [enc.encode(wbr)], deflate),
+      await packEntry('xl/styles.xml', [enc.encode(stylesXml())], deflate)
+    ];
+    sheets.forEach(function (s) { entries.push(packed.get(s)); });
+    var blob = zipBlob(entries);
+    blob.sheetNames = sheets.map(function (s) { return s.name; });
+    blob.notes = notes.length;
+    blob.compressed = deflate;
+    return blob;
+  }
+
+  var api = {
+    VERSION: VERSION,
+    Parser: Parser,
+    parseText: parseText,
+    buildWorkbook: buildWorkbook,
+    describeVerdict: describeVerdict,
+    stemOf: stemOf,
+    splitLdn: splitLdn
+  };
+  root.KgetCore = api;
+  if (typeof module === 'object' && module.exports) module.exports = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+(function () {
+  'use strict';
+  var Core = window.KgetCore;
+  var $ = function (id) { return document.getElementById(id); };
+  var input = $('file'), zone = $('dropzone'), statusEl = $('status'), bar = $('progress'), go = $('go');
+  var list = $('pick-list'), filter = $('pick-filter'), peek = $('peek');
+  var nf = new Intl.NumberFormat('en-US');
+  var state = { result: null, busy: false };
+
+  function say(msg, kind) {
+    statusEl.textContent = msg || '';
+    statusEl.className = 'status' + (kind ? ' ' + kind : '');
+  }
+  function meter(p) {
+    if (p === null) { bar.hidden = true; return; }
+    bar.hidden = false;
+    bar.value = Math.max(0, Math.min(1, p));
+  }
+  function sizeText(b) {
+    if (b < 1024) return b + ' bytes';
+    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+    return (b / 1048576).toFixed(1) + ' MB';
+  }
+  function line(elm, text, ok) {
+    elm.textContent = text;
+    elm.className = 'verdict ' + (ok ? 'ok' : 'attn');
+    elm.hidden = !text;
+  }
+  function encodingOf(b) {
+    if (b.length >= 2 && b[0] === 0xFF && b[1] === 0xFE) return 'utf-16le';
+    if (b.length >= 2 && b[0] === 0xFE && b[1] === 0xFF) return 'utf-16be';
+    return 'utf-8';
+  }
+
+  async function readFile(file, onStep) {
+    var head = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+    if (head.length === 4 && head[0] === 0x50 && head[1] === 0x4B && head[2] === 0x03 && head[3] === 0x04) {
+      throw new Error(file.name + ' is a zip archive, not kget text. Unzip it and drop the kget log from inside it.');
+    }
+    var gz = head.length >= 2 && head[0] === 0x1f && head[1] === 0x8b;
+    var size = file.size || 1, done = 0, reader;
+    if (gz) {
+      if (typeof DecompressionStream === 'undefined') {
+        throw new Error('This browser cannot unpack .gz files. Unpack the file first, or open this page in a current Chrome, Edge, Firefox or Safari.');
+      }
+      reader = file.stream()
+        .pipeThrough(new TransformStream({ transform: function (chunk, c) { done += chunk.byteLength; c.enqueue(chunk); } }))
+        .pipeThrough(new DecompressionStream('gzip'))
+        .getReader();
+    } else {
+      var raw = file.stream().getReader();
+      reader = { read: async function () { var x = await raw.read(); if (!x.done) done += x.value.byteLength; return x; } };
+    }
+    var dec = null, parser = new Core.Parser(file.name);
+    for (;;) {
+      var x;
+      try { x = await reader.read(); }
+      catch (e) { throw new Error(gz ? 'Could not unpack ' + file.name + '. The .gz file looks damaged or incomplete.' : 'Could not read ' + file.name + '.'); }
+      if (x.done) break;
+      if (!dec) dec = new TextDecoder(encodingOf(x.value));
+      parser.push(dec.decode(x.value, { stream: true }));
+      onStep(done / size);
+    }
+    if (dec) parser.push(dec.decode());
+    return parser.end();
+  }
+
+  function reset() {
+    state.result = null;
+    $('result').hidden = true;
+    $('pick').open = false;
+    peek.hidden = true;
+    peek.textContent = '';
+    list.textContent = '';
+    filter.value = '';
+  }
+
+  async function intake(file) {
+    if (state.busy || !file) return;
+    state.busy = true;
+    reset();
+    say('Reading ' + file.name + '...');
+    meter(0);
+    try {
+      var r = await readFile(file, function (p) { meter(p); });
+      if (!r.mos.length) { noBlocks(file, r); return; }
+      state.result = r;
+      show(r);
+      say('');
+    } catch (e) {
+      say(e.message, 'error');
+    } finally {
+      state.busy = false;
+      meter(null);
+      input.value = '';
+    }
+  }
+
+  function noBlocks(file, r) {
+    say('No MO blocks found in ' + file.name + '. kget output has a line that starts with MO followed by the MO name, for example "MO ManagedElement=1,ENodeBFunction=1". The first lines of this file are shown below.', 'error');
+    var first = r.checks.slice(0, 6).map(function (c) { return c.detail; });
+    peek.textContent = first.length ? first.join('\n') : '(the file is empty)';
+    peek.hidden = false;
+  }
+
+  function show(r) {
+    $('r-count').textContent = nf.format(r.mos.length) + (r.mos.length === 1 ? ' MO read' : ' MOs read');
+    var v = Core.describeVerdict(r);
+    line($('r-total'), v.text, v.ok);
+    var u = r.counts.unrecognised;
+    line($('r-lines'), u === 0
+      ? 'Every line inside the MO blocks was placed.'
+      : nf.format(u) + (u === 1 ? ' line' : ' lines') + ' inside the MO blocks could not be placed. The Checks sheet lists each one with its line number.', u === 0);
+    var m = r.counts.mismatches;
+    line($('r-counts'), m === 0 ? '' : nf.format(m) + (m === 1 ? ' struct or array does not hold the number of entries it declares.' : ' structs or arrays do not hold the number of entries they declare.') + ' Details are on the Checks sheet.', false);
+    $('r-facts').textContent = nf.format(r.classNames.length) + (r.classNames.length === 1 ? ' MO class' : ' MO classes') +
+      ' and ' + nf.format(r.counts.values) + ' values from ' +
+      (r.nodes.length === 1 ? 'node ' + r.nodes[0] : nf.format(r.nodes.length) + ' nodes') +
+      ', read from ' + nf.format(r.lines) + ' lines of ' + r.fileName + '.';
+    picker(r);
+    $('result').hidden = false;
+    go.focus({ preventScroll: true });
+  }
+
+  function picker(r) {
+    var frag = document.createDocumentFragment();
+    r.classNames.forEach(function (c) {
+      var li = document.createElement('li');
+      var lab = document.createElement('label');
+      var cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = true; cb.value = c;
+      var nm = document.createElement('span'); nm.className = 'cls'; nm.textContent = c;
+      var ct = document.createElement('span'); ct.className = 'n'; ct.textContent = nf.format(r.classes.get(c).length);
+      lab.append(cb, nm, ct);
+      li.append(lab);
+      li.dataset.key = c.toLowerCase();
+      frag.append(li);
+    });
+    list.append(frag);
+    tally();
+  }
+
+  function boxes() { return Array.prototype.slice.call(list.querySelectorAll('input[type=checkbox]')); }
+  function tally() {
+    var all = boxes(), on = all.filter(function (b) { return b.checked; }).length;
+    $('pick-summary').textContent = on === all.length
+      ? 'Choose MO classes (all ' + nf.format(on) + ' included)'
+      : 'Choose MO classes (' + nf.format(on) + ' of ' + nf.format(all.length) + ' included)';
+    go.disabled = on === 0;
+  }
+
+  async function download() {
+    if (!state.result || state.busy) return;
+    var all = boxes(), chosen = all.filter(function (b) { return b.checked; }).map(function (b) { return b.value; });
+    if (!chosen.length) { say('Choose at least one MO class.', 'error'); return; }
+    state.busy = true;
+    go.disabled = true;
+    meter(0);
+    say('Building the workbook...');
+    try {
+      var blob = await Core.buildWorkbook(state.result, {
+        classes: chosen.length === all.length ? null : chosen,
+        parameters: $('opt-params').checked,
+        onProgress: function (p) { meter(p.done / p.total); say('Building the workbook: sheet ' + nf.format(p.done) + ' of ' + nf.format(p.total) + '.'); }
+      });
+      var name = state.result.stem + '.xlsx';
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = name; a.hidden = true;
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+      say('Downloaded ' + name + ' (' + sizeText(blob.size) + ', ' + nf.format(blob.sheetNames.length) + ' sheets).', 'ok');
+    } catch (e) {
+      say('The workbook could not be built: ' + e.message, 'error');
+    } finally {
+      state.busy = false;
+      go.disabled = false;
+      meter(null);
+    }
+  }
+
+  input.addEventListener('change', function () { intake(input.files && input.files[0]); });
+  ['dragenter', 'dragover'].forEach(function (t) {
+    window.addEventListener(t, function (e) { e.preventDefault(); zone.classList.add('over'); });
+  });
+  window.addEventListener('dragleave', function (e) { if (!e.relatedTarget) zone.classList.remove('over'); });
+  window.addEventListener('drop', function (e) {
+    e.preventDefault();
+    zone.classList.remove('over');
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) intake(f);
+  });
+  list.addEventListener('change', tally);
+  filter.addEventListener('input', function () {
+    var q = filter.value.trim().toLowerCase();
+    Array.prototype.forEach.call(list.children, function (li) { li.hidden = q !== '' && li.dataset.key.indexOf(q) === -1; });
+  });
+  function setShown(on) {
+    Array.prototype.forEach.call(list.children, function (li) { if (!li.hidden) li.querySelector('input').checked = on; });
+    tally();
+  }
+  $('pick-all').addEventListener('click', function () { setShown(true); });
+  $('pick-none').addEventListener('click', function () { setShown(false); });
+  go.addEventListener('click', download);
+  if (typeof TextDecoder === 'undefined' || !window.Blob || !Blob.prototype.stream) {
+    say('This browser is too old for this page. Open it in a current Chrome, Edge, Firefox or Safari.', 'error');
+  }
+})();
+
+</script>
+</body>
+</html>
