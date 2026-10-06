@@ -8,6 +8,8 @@ Open the link in Chrome or Edge, drop your kget file, and click **Download Excel
 
 On a phone, open the link in Chrome or Safari. Browsers inside apps such as LinkedIn often can't pick or save files.
 
+If the link doesn't load on your network, open `index.html` in this repository, use **Download raw file**, and open the downloaded file in Chrome or Edge. It works the same offline.
+
 ## What the workbook holds
 
 | Sheet | Contents |
