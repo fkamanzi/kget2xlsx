@@ -6,6 +6,8 @@ Turn an Ericsson kget dump into an Excel workbook, in your browser.
 
 Open the link in Chrome or Edge, drop your kget file, and click **Download Excel**. Nothing to install.
 
+On a phone, open the link in Chrome or Safari. Browsers inside apps such as LinkedIn often can't pick or save files.
+
 ## What the workbook holds
 
 | Sheet | Contents |
@@ -38,4 +40,4 @@ Node releases and MO models differ. If your file puts a line on the Checks sheet
 
 Independent tool; not affiliated with or endorsed by Ericsson.
 
-Version 1.0, 6 Oct 2026. Prepared by Frutos
+Version 1.1, 6 Oct 2026. Prepared by Frutos

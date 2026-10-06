@@ -31,6 +31,7 @@ h1{font-family:var(--display);font-weight:600;font-stretch:condensed;font-size:c
 .drop-sub{position:relative;color:var(--muted);margin-top:.4rem}
 .drop-sub u{color:var(--signal);text-underline-offset:3px}
 .privacy{font-size:.92rem;color:var(--muted);margin:.75rem 0 0}
+.mobile-note{display:none;color:var(--ink)}
 .status{min-height:1.5rem;margin:1.6rem 0 .5rem}
 .status.error{color:var(--amber);font-weight:600}
 .status.ok{color:var(--signal);font-weight:600}
@@ -73,6 +74,7 @@ footer{margin-top:3rem;color:var(--muted);font-size:.9rem}
   .about dd{margin-bottom:.7rem}
   .dropzone{min-height:16rem;padding:1.25rem 1.25rem 1.35rem}
   .ghost{left:1.25rem;right:1.25rem;font-size:11px}
+  .mobile-note{display:block}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -95,6 +97,7 @@ Struct eUtranCellCoverage has 4 members:
     <span class="drop-sub">or <u>choose a file</u>. Plain text, .log or .gz.</span>
   </label>
   <p class="privacy">The file is read in this browser and never uploaded.</p>
+  <p class="privacy mobile-note">Best on a laptop. On a phone, open this page in Chrome or Safari: browsers inside apps such as LinkedIn often can't pick or save files.</p>
 
   <div id="status" class="status" role="status" aria-live="polite"></div>
   <progress id="progress" max="1" value="0" hidden></progress>
@@ -131,14 +134,14 @@ Struct eUtranCellCoverage has 4 members:
     </dl>
   </section>
 
-  <footer>Runs offline in your browser. kget2xlsx 1.0. Prepared by Frutos</footer>
+  <footer>Runs offline in your browser. kget2xlsx 1.1. Prepared by Frutos</footer>
 </main>
 <script>
 /* kget2xlsx core: Ericsson kget text parser and XLSX writer. No dependencies. Prepared by Frutos. */
 (function (root) {
   'use strict';
 
-  var VERSION = '1.0';
+  var VERSION = '1.1';
   var MAX_ROWS = 1048576;     // Excel rows per sheet, header included
   var MAX_COLS = 16384;       // Excel columns per sheet
   var MAX_CELL = 32767;       // Excel characters per cell
